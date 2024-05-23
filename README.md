@@ -1,2 +1,2 @@
 # ViaMonstraGraphAPI
-Scripts from Graph Demos
+Scripts from Demos
