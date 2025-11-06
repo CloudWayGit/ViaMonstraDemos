@@ -1,0 +1,647 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "staticResults": {
+            "APN_Cert_Expired0": {
+                "status": "Succeeded",
+                "outputs": {
+                    "headers": {},
+                    "statusCode": "OK"
+                },
+                "hasDelegate": false
+            },
+            "APN_Notification1": {
+                "status": "Succeeded",
+                "outputs": {
+                    "headers": {},
+                    "statusCode": "OK"
+                },
+                "hasDelegate": false
+            }
+        },
+        "triggers": {
+            "Recurrence": {
+                "recurrence": {
+                    "frequency": "Day",
+                    "interval": 60,
+                    "schedule": {
+                        "hours": [
+                            "9"
+                        ]
+                    }
+                },
+                "evaluatedRecurrence": {
+                    "frequency": "Day",
+                    "interval": 60,
+                    "schedule": {
+                        "hours": [
+                            "9"
+                        ]
+                    }
+                },
+                "type": "Recurrence"
+            }
+        },
+        "actions": {
+            "ApplePNExpiryCheck": {
+                "actions": {
+                    "Certificate_Expire_Check": {
+                        "actions": {
+                            "APN_Cert_Expired": {
+                                "runAfter": {},
+                                "type": "Http",
+                                "inputs": {
+                                    "body": {
+                                        "@@context": "http://schema.org/extensions",
+                                        "@@type": "MessageCard",
+                                        "priority": "high",
+                                        "sections": [
+                                            {
+                                                "activityImage": "",
+                                                "activitySubtitle": "**Certificate Expired - @{body('ParseAPNCertInfo')?['expirationDateTime']}**",
+                                                "activityTitle": "<h1>🔥 Apple Push Notification Certificate</h1>",
+                                                "facts": [
+                                                    {
+                                                        "name": "",
+                                                        "value": "Please note that your Apple Push Certificate has expired. <br><br>At this point you will need to create a new certificate and re-onboard **all** iOS/iPadOS & MacOS devices. Log onto the portal here to get started - (https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesEnrollmentMenu/~/appleEnrollment). <br><br>You might want to polish off your resume, just a thought..."
+                                                    }
+                                                ],
+                                                "markdown": true
+                                            },
+                                            {
+                                                "startGroup": true,
+                                                "text": "**Certificate Details**<br><hr>**Apple ID**: DEMO <br>**Certificate Expiry:**  @{body('ParseAPNCertInfo')?['expirationDateTime']}<br>**Certificate Serial Number:** @{body('ParseAPNCertInfo')?['certificateSerialNumber']}"
+                                            }
+                                        ],
+                                        "summary": "Apple Push Notification Certificate status",
+                                        "themeColor": "0076D7"
+                                    },
+                                    "method": "POST",
+                                    "uri": "@variables('WebHook')"
+                                },
+                                "runtimeConfiguration": {
+                                    "staticResult": {
+                                        "staticResultOptions": "Disabled",
+                                        "name": "APN_Cert_Expired0"
+                                    }
+                                }
+                            }
+                        },
+                        "runAfter": {},
+                        "else": {
+                            "actions": {
+                                "APN_Notification": {
+                                    "runAfter": {},
+                                    "type": "Http",
+                                    "inputs": {
+                                        "body": {
+                                            "@@context": "http://schema.org/extensions",
+                                            "@@type": "MessageCard",
+                                            "priority": "high",
+                                            "sections": [
+                                                {
+                                                    "activityImage": "",
+                                                    "activitySubtitle": "**Certificate Renewal Due - @{body('ParseAPNCertInfo')?['expirationDateTime']}**",
+                                                    "activityTitle": "<h1>⚠️ Apple Push Notification Certificate status </h1>",
+                                                    "facts": [
+                                                        {
+                                                            "name": "",
+                                                            "value": "Please note that your Apple Push Certificate is due for renewal. Note that you can renew the APN certificate at any point.<BR>**Do not allow this to expire**.<br><br>Please log onto the [Intune Administrative Center](https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesEnrollmentMenu/~/appleEnrollment) and investigate ASAP. "
+                                                        }
+                                                    ],
+                                                    "markdown": true
+                                                },
+                                                {
+                                                    "startGroup": true,
+                                                    "text": "**Certificate Details**<br><hr>**Apple ID**: @{body('ParseAPNCertInfo')?['appleIdentifier']} <br>**Certificate Expiry:**  @{body('ParseAPNCertInfo')?['expirationDateTime']}<br>**Certificate Serial Number:** @{body('ParseAPNCertInfo')?['certificateSerialNumber']}"
+                                                }
+                                            ],
+                                            "summary": "Apple Push Notification Certificate status",
+                                            "themeColor": "0076D7"
+                                        },
+                                        "method": "POST",
+                                        "uri": "@variables('WebHook')"
+                                    },
+                                    "runtimeConfiguration": {
+                                        "staticResult": {
+                                            "staticResultOptions": "Disabled",
+                                            "name": "APN_Notification1"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "expression": {
+                            "and": [
+                                {
+                                    "greaterOrEquals": [
+                                        "@addToTime(utcNow(),-339,'day')",
+                                        "@body('ParseAPNCertInfo')?['expirationDateTime']"
+                                    ]
+                                }
+                            ]
+                        },
+                        "type": "If"
+                    }
+                },
+                "runAfter": {
+                    "ParseAPNCertInfo": [
+                        "Succeeded"
+                    ]
+                },
+                "expression": {
+                    "and": [
+                        {
+                            "less": [
+                                "@body('ParseAPNCertInfo')?['expirationDateTime']",
+                                "@addToTime(utcNow(),350,'day')"
+                            ]
+                        }
+                    ]
+                },
+                "type": "If"
+            },
+            "Apple_DEP": {
+                "runAfter": {
+                    "Webhook_URI": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http",
+                "inputs": {
+                    "authentication": {
+                        "audience": "https://graph.microsoft.com",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/deviceManagement/depOnboardingSettings"
+                }
+            },
+            "Apple_Push_Notification": {
+                "runAfter": {
+                    "Webhook_URI": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http",
+                "inputs": {
+                    "authentication": {
+                        "audience": "https://graph.microsoft.com",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/deviceManagement/applePushNotificationCertificate"
+                }
+            },
+            "Apple_VPP_tokens": {
+                "runAfter": {
+                    "Webhook_URI": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Http",
+                "inputs": {
+                    "authentication": {
+                        "audience": "https://graph.microsoft.com",
+                        "type": "ManagedServiceIdentity"
+                    },
+                    "method": "GET",
+                    "uri": "https://graph.microsoft.com/beta/deviceAppManagement/vppTokens"
+                }
+            },
+            "ForEachAppleDEPToken": {
+                "foreach": "@body('ParseAppleDEP')?['value']",
+                "actions": {
+                    "DEPExpiryDateCheck": {
+                        "actions": {
+                            "Create_HTML_DEP_table": {
+                                "runAfter": {},
+                                "type": "Table",
+                                "inputs": {
+                                    "columns": [
+                                        {
+                                            "header": "TokenExpiration",
+                                            "value": "@items('ForEachAppleDEPToken')?['tokenExpirationDateTime']"
+                                        },
+                                        {
+                                            "header": "SyncedDevices",
+                                            "value": "@items('ForEachAppleDEPToken')?['syncedDeviceCount']"
+                                        },
+                                        {
+                                            "header": "AppleID",
+                                            "value": "@items('ForEachAppleDEPToken')?['appleIdentifier']"
+                                        }
+                                    ],
+                                    "format": "HTML",
+                                    "from": "@body('ParseAppleDEP')?['value']"
+                                }
+                            },
+                            "DEP_Notification": {
+                                "runAfter": {
+                                    "Create_HTML_DEP_table": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "Http",
+                                "inputs": {
+                                    "body": {
+                                        "@@context": "http://schema.org/extensions",
+                                        "@@type": "MessageCard",
+                                        "sections": [
+                                            {
+                                                "activityImage": "",
+                                                "activitySubtitle": "**⚠️ Issue Detected**",
+                                                "activityTitle": "Apple DEP Connector status",
+                                                "facts": [
+                                                    {
+                                                        "name": "",
+                                                        "value": "An issue has been detected with the Apple DEP connector. Please log onto the [Intune Administrative Center](https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesEnrollmentMenu/~/appleEnrollment) and investigate.'"
+                                                    }
+                                                ],
+                                                "markdown": true
+                                            },
+                                            {
+                                                "startGroup": true,
+                                                "text": "@{body('Create_HTML_DEP_table')}"
+                                            }
+                                        ],
+                                        "summary": "Apple DEP Connector status",
+                                        "themeColor": "0076D7"
+                                    },
+                                    "method": "POST",
+                                    "uri": "@variables('WebHook')"
+                                }
+                            }
+                        },
+                        "runAfter": {},
+                        "expression": {
+                            "and": [
+                                {
+                                    "less": [
+                                        "@items('ForEachAppleDEPToken')?['tokenExpirationDateTime']",
+                                        "@addToTime(utcNow(),300,'day')"
+                                    ]
+                                }
+                            ]
+                        },
+                        "type": "If"
+                    }
+                },
+                "runAfter": {
+                    "ParseAppleDEP": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "ForEachAppleVPPToken": {
+                "foreach": "@body('ParseAppleVPP')?['value']",
+                "actions": {
+                    "Condition": {
+                        "actions": {
+                            "Create_VPP_HTML_table": {
+                                "runAfter": {},
+                                "type": "Table",
+                                "inputs": {
+                                    "columns": [
+                                        {
+                                            "header": "AppleID",
+                                            "value": "@items('ForEachAppleVPPToken')?['appleId']"
+                                        },
+                                        {
+                                            "header": "ExpirationDate",
+                                            "value": "@items('ForEachAppleVPPToken')?['expirationDateTime']"
+                                        },
+                                        {
+                                            "header": "LastSyncState",
+                                            "value": "@items('ForEachAppleVPPToken')?['lastSyncStatus']"
+                                        },
+                                        {
+                                            "header": "LastSyncDate",
+                                            "value": "@items('ForEachAppleVPPToken')?['lastSyncDateTime']"
+                                        }
+                                    ],
+                                    "format": "HTML",
+                                    "from": "@body('ParseAppleVPP')?['value']"
+                                }
+                            },
+                            "VPP_Notificaiton": {
+                                "runAfter": {
+                                    "Create_VPP_HTML_table": [
+                                        "Succeeded"
+                                    ]
+                                },
+                                "type": "Http",
+                                "inputs": {
+                                    "body": {
+                                        "@@context": "http://schema.org/extensions",
+                                        "@@type": "MessageCard",
+                                        "sections": [
+                                            {
+                                                "activityImage": "",
+                                                "activitySubtitle": "**⚠️ Issue Detected**",
+                                                "activityTitle": "Apple Volume Purchase Program connector status",
+                                                "facts": [
+                                                    {
+                                                        "name": "",
+                                                        "value": "An issue has been detected with the Apple VPP connector. Please log onto the [Intune Administrative Center](https://intune.microsoft.com/#view/Microsoft_Intune_DeviceSettings/DevicesEnrollmentMenu/~/appleEnrollment) and investigate.'"
+                                                    }
+                                                ],
+                                                "markdown": true
+                                            },
+                                            {
+                                                "startGroup": true,
+                                                "text": "@{body('Create_VPP_HTML_table')}"
+                                            }
+                                        ],
+                                        "summary": "Apple VPP connector status",
+                                        "themeColor": "0076D7"
+                                    },
+                                    "method": "POST",
+                                    "uri": "@variables('WebHook')"
+                                }
+                            }
+                        },
+                        "runAfter": {},
+                        "expression": {
+                            "and": [
+                                {
+                                    "less": [
+                                        "@items('ForEachAppleVPPToken')?['expirationDateTime']",
+                                        "@addToTime(utcNow(),300,'day')"
+                                    ]
+                                }
+                            ]
+                        },
+                        "type": "If"
+                    }
+                },
+                "runAfter": {
+                    "ParseAppleVPP": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "ParseAPNCertInfo": {
+                "runAfter": {
+                    "Apple_Push_Notification": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Apple_Push_Notification')",
+                    "schema": {
+                        "properties": {
+                            "@@microsoft.graph.tips": {
+                                "type": "string"
+                            },
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "appleIdentifier": {
+                                "type": "string"
+                            },
+                            "certificate": {},
+                            "certificateSerialNumber": {
+                                "type": "string"
+                            },
+                            "certificateUploadFailureReason": {},
+                            "certificateUploadStatus": {},
+                            "expirationDateTime": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "string"
+                            },
+                            "lastModifiedDateTime": {
+                                "type": "string"
+                            },
+                            "topicIdentifier": {
+                                "type": "string"
+                            }
+                        },
+                        "type": "object"
+                    }
+                }
+            },
+            "ParseAppleDEP": {
+                "runAfter": {
+                    "Apple_DEP": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Apple_DEP')",
+                    "schema": {
+                        "properties": {
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "@@odata.count": {
+                                "type": "integer"
+                            },
+                            "value": {
+                                "items": {
+                                    "properties": {
+                                        "appleIdentifier": {
+                                            "type": "string"
+                                        },
+                                        "dataSharingConsentGranted": {
+                                            "type": "boolean"
+                                        },
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "lastModifiedDateTime": {
+                                            "type": "string"
+                                        },
+                                        "lastSuccessfulSyncDateTime": {
+                                            "type": "string"
+                                        },
+                                        "lastSyncErrorCode": {
+                                            "type": "integer"
+                                        },
+                                        "lastSyncTriggeredDateTime": {
+                                            "type": "string"
+                                        },
+                                        "roleScopeTagIds": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        "shareTokenWithSchoolDataSyncService": {
+                                            "type": "boolean"
+                                        },
+                                        "syncedDeviceCount": {
+                                            "type": "integer"
+                                        },
+                                        "tokenExpirationDateTime": {
+                                            "type": "string"
+                                        },
+                                        "tokenName": {
+                                            "type": "string"
+                                        },
+                                        "tokenType": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "appleIdentifier",
+                                        "tokenExpirationDateTime",
+                                        "lastModifiedDateTime",
+                                        "lastSuccessfulSyncDateTime",
+                                        "lastSyncTriggeredDateTime",
+                                        "shareTokenWithSchoolDataSyncService",
+                                        "lastSyncErrorCode",
+                                        "tokenType",
+                                        "tokenName",
+                                        "syncedDeviceCount",
+                                        "dataSharingConsentGranted",
+                                        "roleScopeTagIds"
+                                    ],
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    }
+                }
+            },
+            "ParseAppleVPP": {
+                "runAfter": {
+                    "Apple_VPP_tokens": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Apple_VPP_tokens')",
+                    "schema": {
+                        "properties": {
+                            "@@odata.context": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "items": {
+                                    "properties": {
+                                        "appleId": {
+                                            "type": "string"
+                                        },
+                                        "automaticallyUpdateApps": {
+                                            "type": "boolean"
+                                        },
+                                        "claimTokenManagementFromExternalMdm": {
+                                            "type": "boolean"
+                                        },
+                                        "countryOrRegion": {
+                                            "type": "string"
+                                        },
+                                        "dataSharingConsentGranted": {
+                                            "type": "boolean"
+                                        },
+                                        "displayName": {
+                                            "type": "string"
+                                        },
+                                        "expirationDateTime": {
+                                            "type": "string"
+                                        },
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "lastModifiedDateTime": {
+                                            "type": "string"
+                                        },
+                                        "lastSyncDateTime": {
+                                            "type": "string"
+                                        },
+                                        "lastSyncStatus": {
+                                            "type": "string"
+                                        },
+                                        "locationName": {
+                                            "type": "string"
+                                        },
+                                        "organizationName": {
+                                            "type": "string"
+                                        },
+                                        "roleScopeTagIds": {
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "type": "array"
+                                        },
+                                        "state": {
+                                            "type": "string"
+                                        },
+                                        "token": {},
+                                        "tokenActionResults": {
+                                            "type": "array"
+                                        },
+                                        "vppTokenAccountType": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "organizationName",
+                                        "vppTokenAccountType",
+                                        "appleId",
+                                        "expirationDateTime",
+                                        "lastSyncDateTime",
+                                        "token",
+                                        "lastModifiedDateTime",
+                                        "state",
+                                        "lastSyncStatus",
+                                        "automaticallyUpdateApps",
+                                        "countryOrRegion",
+                                        "dataSharingConsentGranted",
+                                        "displayName",
+                                        "locationName",
+                                        "claimTokenManagementFromExternalMdm",
+                                        "roleScopeTagIds",
+                                        "tokenActionResults"
+                                    ],
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    }
+                }
+            },
+            "Webhook_URI": {
+                "runAfter": {},
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "WebHook",
+                            "type": "string",
+                            "value": "https://outlook.office.com/webhook/..."
+                        }
+                    ]
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {}
+        }
+    }
+}
